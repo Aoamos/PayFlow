@@ -95,4 +95,4 @@ const getTransactions = async (req, res) => {
   }
 };
 
-module.exports = { transferMoney, addMoney };
+module.exports = { transferMoney, addMoney, getTransactions };
