@@ -72,6 +72,11 @@ const addMoney = async (req, res) => {
 
 const getTransactions = async (req, res) => {
   try {
+    const userId = req.user.id;
+    const wallet = await Wallet.findOne({ user: userId });
+
+    if (!wallet) return res.status(404).json({ message: "Wallet not found" });
+
     const {
       page = 1,
       limit = 10,
@@ -79,14 +84,19 @@ const getTransactions = async (req, res) => {
       order = "desc",
     } = req.query;
 
-    const transactions = await Transaction.find()
+    const transactions = await Transaction.find({
+      $or: [{ senderWallet: wallet._id }, { receiverWallet: wallet._id }],
+    })
+
       .populate("senderWallet", "balance user")
       .populate("receiverWallet", "balance user")
       .sort({ [sortBy]: order === "desc" ? -1 : 1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
-    const totalTransactions = await Transaction.countDocuments();
+    const totalTransactions = await Transaction.countDocuments({
+      $or: [{ senderWallet: wallet._id }, { receiverWallet: wallet._id }],
+    });
 
     res.status(200).json({ page, limit, totalTransactions, transactions });
   } catch (error) {
@@ -95,4 +105,21 @@ const getTransactions = async (req, res) => {
   }
 };
 
-module.exports = { transferMoney, addMoney, getTransactions };
+const getwalletBalance = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const wallet = await Wallet.findOne({ user: userId });
+
+    if (!wallet) return res.status(404).json({ message: "Wallet not found" });
+
+    res.status(200).json({
+      message: "Wallet balance retrieved successfully",
+      wallet: { id: wallet._id, balance: wallet.balance },
+    });
+  } catch (error) {
+    console.error("Error fetching wallet balance", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports = { transferMoney, addMoney, getTransactions, getwalletBalance };
